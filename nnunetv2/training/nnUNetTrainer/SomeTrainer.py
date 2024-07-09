@@ -63,24 +63,9 @@ from torch.cuda import device_count
 from torch.cuda.amp import GradScaler
 from torch.nn.parallel import DistributedDataParallel as DDP
 
-
-class nnUNetTrainer(object):
+class SomeTrainer(object):
     def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
                  device: torch.device = torch.device('cuda')):
-        # From https://grugbrain.dev/. Worth a read ya big brains ;-)
-
-        # apex predator of grug is complexity
-        # complexity bad
-        # say again:
-        # complexity very bad
-        # you say now:
-        # complexity very, very bad
-        # given choice between complexity or one on one against t-rex, grug take t-rex: at least grug see t-rex
-        # complexity is spirit demon that enter codebase through well-meaning but ultimately very clubbable non grug-brain developers and project managers who not fear complexity spirit demon or even know about sometime
-        # one day code base understandable and grug can get work done, everything good!
-        # next day impossible: complexity demon spirit has entered code and very dangerous situation!
-
-        # OK OK I am guilty. But I tried. http://tiny.cc/gzgwuz
 
         self.is_ddp = dist.is_available() and dist.is_initialized()
         self.local_rank = 0 if not self.is_ddp else dist.get_rank()
@@ -96,8 +81,7 @@ class nnUNetTrainer(object):
         else:
             if self.device.type == 'cuda':
                 # we might want to let the user pick this but for now please pick the correct GPU with CUDA_VISIBLE_DEVICES=X
-                # self.device = torch.device(type='cuda', index=1)
-                self.device = torch.device(type='cuda', index=3)
+                self.device = torch.device(type='cuda', index=0)
             print(f"Using device: {self.device}")
 
         # loading and saving this class for continuing from checkpoint should not happen based on pickling. This
@@ -143,7 +127,7 @@ class nnUNetTrainer(object):
         self.oversample_foreground_percent = 0.33
         self.num_iterations_per_epoch = 250
         self.num_val_iterations_per_epoch = 50
-        self.num_epochs = 50
+        self.num_epochs = 1000
         self.current_epoch = 0
 
         ### Dealing with labels/regions
@@ -425,7 +409,6 @@ class nnUNetTrainer(object):
         if self.local_rank == 0:
             timestamp = time()
             dt_object = datetime.fromtimestamp(timestamp)
-
             if add_timestamp:
                 args = ("%s:" % dt_object, *args)
 
@@ -893,7 +876,6 @@ class nnUNetTrainer(object):
             l.backward()
             torch.nn.utils.clip_grad_norm_(self.network.parameters(), 12)
             self.optimizer.step()
-
         return {'loss': l.detach().cpu().numpy()}
 
     def on_train_epoch_end(self, train_outputs: List[dict]):
@@ -1039,11 +1021,6 @@ class nnUNetTrainer(object):
         self.current_epoch += 1
 
     def save_checkpoint(self, filename: str) -> None:
-        # # reparametrize if needed:
-        # for m in self.network.modules():
-        #     if hasattr(m, 'reparameterize'):
-        #         m.reparameterize()
-
         if self.local_rank == 0:
             if not self.disable_checkpointing:
                 if self.is_ddp:
@@ -1102,10 +1079,6 @@ class nnUNetTrainer(object):
             else:
                 self.network.load_state_dict(new_state_dict)
         self.optimizer.load_state_dict(checkpoint['optimizer_state'])
-
-        # for param_group in self.optimizer.param_groups:
-        #     param_group['lr'] = 2e-5
-        # self.optimizer.param_groups[0]['lr']
         if self.grad_scaler is not None:
             if checkpoint['grad_scaler_state'] is not None:
                 self.grad_scaler.load_state_dict(checkpoint['grad_scaler_state'])
