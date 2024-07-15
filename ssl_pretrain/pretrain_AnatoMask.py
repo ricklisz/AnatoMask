@@ -6,10 +6,10 @@ from time import sleep
 from datetime import datetime
 import numpy as np
 from timm.utils import ModelEma
-from nnunetv2.training.lr_scheduler.LinearWarmupCosine import LinearWarmupCosineAnnealingLR
+# from nnunetv2.training.lr_scheduler.LinearWarmupCosine import LinearWarmupCosineAnnealingLR
 from STUNet_head import STUNet
 from encoder3D import SparseEncoder
-from decoder3D import LightDecoder,UniDecoder
+from decoder3D import LightDecoder
 from AnatoMask import SparK
 from torch.cuda.amp import GradScaler, autocast
 import sys
@@ -47,6 +47,8 @@ from torch.utils.data import DataLoader, TensorDataset
 from utils.lr_control import lr_wd_annealing, get_param_groups
 from utils import dist
 import monai
+import torch.optim.lr_scheduler as lr_scheduler
+
 
 # Training transforms, data augmentation pipelines
 def get_training_transforms(patch_size: Union[np.ndarray, Tuple[int]],
@@ -171,25 +173,6 @@ def get_validation_transforms(deep_supervision_scales: Union[List, Tuple],
     val_transforms = Compose(val_transforms)
     return val_transforms
 
-# endregion
-
-device = torch.device("cuda:4")
-
-pool_op_kernel_sizes = [[2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [1,1,1]]
-conv_kernel_sizes =  [[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]]
-
-# STUNet_B
-head = STUNet(1,1,depth=[1, 1, 1, 1, 1, 1], dims=[32, 64, 128, 256, 512, 512], pool_op_kernel_sizes = pool_op_kernel_sizes, conv_kernel_sizes = conv_kernel_sizes,
-               enable_deep_supervision=True).to(device)
-# STUNet_L
-# from GC import STUNet
-# head = STUNet(1,1,depth=[2] * 6, dims=[64 * x for x in [1, 2, 4, 8, 16, 16]], pool_op_kernel_sizes = pool_op_kernel_sizes, conv_kernel_sizes = conv_kernel_sizes,
-#               enable_deep_supervision=True).to(device)
-# STUNet_H
-# head = STUNet(1,1,depth=[3] * 6, dims=[96 * x for x in [1, 2, 4, 8, 16, 16]], pool_op_kernel_sizes = pool_op_kernel_sizes, conv_kernel_sizes = conv_kernel_sizes,
-#             enable_deep_supervision=True).to(device)
-
-model_name = 'STUNet_B'
 
 class LocalDDP(torch.nn.Module):
     def __init__(self, module):
@@ -198,45 +181,6 @@ class LocalDDP(torch.nn.Module):
 
     def forward(self, *args, **kwargs):
         return self.module(*args, **kwargs)
-
-enc = SparseEncoder(head, input_size=(112, 112, 128), sbn=False).to(device)
-dec = LightDecoder(enc.downsample_ratio,sbn=False, width = 512, out_channel = 1).to(device)
-model_without_ddp = SparK(
-    sparse_encoder=enc, dense_decoder=dec, mask_ratio=0.6,
-    densify_norm='in').to(device)
-
-# model_without_ddp = torch.compile(model_without_ddp)
-
-model_ema = ModelEma(model_without_ddp, decay=0.999, device=device, resume='')
-
-
-model = LocalDDP(model_without_ddp)
-# # Chnage this every time...
-fold = 0
-epoch = 1000
-batch_size = 4
-opt = 'adamw'
-ada = 0.999
-lr = 1e-4
-weight_decay = 1e-5
-clip = 12
-wd = 0.04
-wde = 0.2
-wp_ep = 8
-warmup = 20
-AMP = False
-guide = True
-alpha = 0.9
-
-# Make your output folder
-output_folder = '/home/yl_li/STUNet/nnUNet-1.7.1/nnUNet_results/Dataset501_Total/Pretraining/' + model_name +'_rebuttal'
-timestamp = datetime.now()
-maybe_mkdir_p(output_folder)
-
-log_file = join(output_folder, 'training_log_%d_%d_%d_%02.0d_%02.0d_%02.0d.txt'%
-                     (timestamp.year, timestamp.month, timestamp.day, timestamp.hour, timestamp.minute,
-                      timestamp.second))
-#
 def print_to_log_file(*args, also_print_to_console=True, add_timestamp=True):
     timestamp = time.time()
     dt_object = datetime.fromtimestamp(timestamp)
@@ -263,189 +207,257 @@ def print_to_log_file(*args, also_print_to_console=True, add_timestamp=True):
     if also_print_to_console:
         print(*args)
 
-# Find your dataset folder
-preprocessed_dataset_folder = '/scr/yl_li/segmentation_data/nnUNet_preprocessed/Dataset501_Total/nnUNetPlans_3d_fullres'
-# Find your splits
-splits_file = '/scr/yl_li/segmentation_data/nnUNet_preprocessed/Dataset501_Total/splits_final.json'
-splits = load_json(splits_file)
+# endregion
 
-all_keys = splits[fold]['train']
-tr_keys, val_keys = train_test_split(all_keys, test_size=0.15, random_state=42)
 
-dataset_tr = nnUNetDataset(preprocessed_dataset_folder, tr_keys,
-                           folder_with_segs_from_previous_stage=None,
-                           num_images_properties_loading_threshold=0)
-dataset_val = nnUNetDataset(preprocessed_dataset_folder, val_keys,
+
+if __name__ == '__main__':
+    import multiprocessing
+    multiprocessing.freeze_support()
+
+    device = torch.device("cuda:0")
+
+    pool_op_kernel_sizes = [[2, 2, 2], [2, 2, 2], [2, 2, 2], [2, 2, 2], [1,1,1]]
+    conv_kernel_sizes =  [[3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3], [3, 3, 3]]
+
+    # STUNet_B
+    head = STUNet(1,1,depth=[1, 1, 1, 1, 1, 1], dims=[32, 64, 128, 256, 512, 512], pool_op_kernel_sizes = pool_op_kernel_sizes, conv_kernel_sizes = conv_kernel_sizes,
+                enable_deep_supervision=True).to(device)
+    # STUNet_L
+    # from GC import STUNet
+    # head = STUNet(1,1,depth=[2] * 6, dims=[64 * x for x in [1, 2, 4, 8, 16, 16]], pool_op_kernel_sizes = pool_op_kernel_sizes, conv_kernel_sizes = conv_kernel_sizes,
+    #               enable_deep_supervision=True).to(device)
+    # STUNet_H
+    # head = STUNet(1,1,depth=[3] * 6, dims=[96 * x for x in [1, 2, 4, 8, 16, 16]], pool_op_kernel_sizes = pool_op_kernel_sizes, conv_kernel_sizes = conv_kernel_sizes,
+    #             enable_deep_supervision=True).to(device)
+
+    model_name = 'STUNet_B'
+
+
+    enc = SparseEncoder(head, input_size=(112, 112, 128), sbn=False).to(device)
+    dec = LightDecoder(enc.downsample_ratio,sbn=False, width = 512, out_channel = 1).to(device)
+    model_without_ddp = SparK(
+        sparse_encoder=enc, dense_decoder=dec, mask_ratio=0.6,
+        densify_norm='in').to(device)
+
+    # model_without_ddp = torch.compile(model_without_ddp)
+
+    model_ema = ModelEma(model_without_ddp, decay=0.999, device=device, resume='')
+
+
+    model = LocalDDP(model_without_ddp)
+    # # Chnage this every time...
+    fold = 0
+    epoch = 1000
+    batch_size = 1
+    opt = 'adamw'
+    ada = 0.999
+    lr = 1e-4
+    weight_decay = 1e-5
+    clip = 12
+    wd = 0.04
+    wde = 0.2
+    wp_ep = 8
+    warmup = 20
+    AMP = False
+    guide = True
+    alpha = 0.9
+
+    # Make your output folder
+    output_folder = 'E:/Yuheng/output'
+    timestamp = datetime.now()
+    maybe_mkdir_p(output_folder)
+
+    log_file = join(output_folder, 'training_log_%d_%d_%d_%02.0d_%02.0d_%02.0d.txt'%
+                        (timestamp.year, timestamp.month, timestamp.day, timestamp.hour, timestamp.minute,
+                        timestamp.second))
+    #
+
+    # Find your dataset folder
+    preprocessed_dataset_folder = 'E:/Yuheng/nnUNet_preprocessed/Dataset009_Spleen/nnUNetPlans_3d_fullres'
+    # Find your splits
+    splits_file = 'E:/Yuheng/nnUNet_preprocessed/Dataset009_Spleen/splits_final.json'
+    splits = load_json(splits_file)
+
+    all_keys = splits[fold]['train']
+    tr_keys, val_keys = train_test_split(all_keys, test_size=0.15, random_state=42)
+
+    dataset_tr = nnUNetDataset(preprocessed_dataset_folder, tr_keys,
                             folder_with_segs_from_previous_stage=None,
                             num_images_properties_loading_threshold=0)
+    dataset_val = nnUNetDataset(preprocessed_dataset_folder, val_keys,
+                                folder_with_segs_from_previous_stage=None,
+                                num_images_properties_loading_threshold=0)
 
-# find your dataset
-dataset_json = load_json('/scr/yl_li/segmentation_data/nnUNet_preprocessed/Dataset501_Total/dataset.json')
-# Load your plans
-plans = load_json('/scr/yl_li/segmentation_data/nnUNet_preprocessed/Dataset501_Total/nnUNetPlans.json')
-plans_manager = PlansManager(plans)
-configuration_manager = plans_manager.get_configuration('3d_fullres')
-label_manager = plans_manager.get_label_manager(dataset_json)
+    # find your dataset
+    dataset_json = load_json('E:/Yuheng/Dataset009_Spleen/dataset.json')
+    # Load your plans
+    plans = load_json('E:/Yuheng/nnUNet_preprocessed/Dataset009_Spleen/nnUNetPlans.json')
+    plans_manager = PlansManager(plans)
+    configuration_manager = plans_manager.get_configuration('3d_fullres')
+    label_manager = plans_manager.get_label_manager(dataset_json)
 
-patch_size = configuration_manager.patch_size
-dim = len(patch_size)
-rotation_for_DA = {
-                    'x': (-30. / 360 * 2. * np.pi, 30. / 360 * 2. * np.pi),
-                    'y': (-30. / 360 * 2. * np.pi, 30. / 360 * 2. * np.pi),
-                    'z': (-30. / 360 * 2. * np.pi, 30. / 360 * 2. * np.pi),
-                }
-initial_patch_size = get_patch_size(patch_size[-dim:],
-                                    *rotation_for_DA.values(),
-                                    (0.85, 1.25))
+    patch_size = configuration_manager.patch_size
+    dim = len(patch_size)
+    rotation_for_DA = {
+                        'x': (-30. / 360 * 2. * np.pi, 30. / 360 * 2. * np.pi),
+                        'y': (-30. / 360 * 2. * np.pi, 30. / 360 * 2. * np.pi),
+                        'z': (-30. / 360 * 2. * np.pi, 30. / 360 * 2. * np.pi),
+                    }
+    initial_patch_size = get_patch_size(patch_size[-dim:],
+                                        *rotation_for_DA.values(),
+                                        (0.85, 1.25))
 
-dl_tr = nnUNetDataLoader3D(dataset_tr, batch_size,
-                           initial_patch_size,
-                           configuration_manager.patch_size,
-                           label_manager,
-                           oversample_foreground_percent=0.33,
-                           sampling_probabilities=None, pad_sides=None)
+    dl_tr = nnUNetDataLoader3D(dataset_tr, batch_size,
+                            initial_patch_size,
+                            configuration_manager.patch_size,
+                            label_manager,
+                            oversample_foreground_percent=0.33,
+                            sampling_probabilities=None, pad_sides=None)
 
-dl_val = nnUNetDataLoader3D(dataset_val, batch_size,
-                           configuration_manager.patch_size,
-                           configuration_manager.patch_size,
-                           label_manager,
-                           oversample_foreground_percent=0.33,
-                           sampling_probabilities=None, pad_sides=None)
+    dl_val = nnUNetDataLoader3D(dataset_val, batch_size,
+                            configuration_manager.patch_size,
+                            configuration_manager.patch_size,
+                            label_manager,
+                            oversample_foreground_percent=0.33,
+                            sampling_probabilities=None, pad_sides=None)
 
-iters_train = len(dataset_tr) // batch_size
-iters_val = len(dataset_val) // batch_size
+    iters_train = len(dataset_tr) // batch_size
+    iters_val = len(dataset_val) // batch_size
 
-deep_supervision_scales = list(list(i) for i in 1 / np.cumprod(np.vstack(
-            configuration_manager.pool_op_kernel_sizes), axis=0))[:-1]
-mirror_axes = (0, 1, 2)
+    deep_supervision_scales = list(list(i) for i in 1 / np.cumprod(np.vstack(
+                configuration_manager.pool_op_kernel_sizes), axis=0))[:-1]
+    mirror_axes = (0, 1, 2)
 
-tr_transforms = get_training_transforms(
-    patch_size, rotation_for_DA, deep_supervision_scales, mirror_axes, False,
-    order_resampling_data=3, order_resampling_seg=1,
-    use_mask_for_norm=configuration_manager.use_mask_for_norm,
-    is_cascaded=False, foreground_labels=label_manager.foreground_labels,
-    regions=label_manager.foreground_regions if label_manager.has_regions else None,
-    ignore_label=label_manager.ignore_label)
+    tr_transforms = get_training_transforms(
+        patch_size, rotation_for_DA, deep_supervision_scales, mirror_axes, False,
+        order_resampling_data=3, order_resampling_seg=1,
+        use_mask_for_norm=configuration_manager.use_mask_for_norm,
+        is_cascaded=False, foreground_labels=label_manager.foreground_labels,
+        regions=label_manager.foreground_regions if label_manager.has_regions else None,
+        ignore_label=label_manager.ignore_label)
 
-val_transforms = get_validation_transforms(
-    deep_supervision_scales,
-    is_cascaded=False,
-    foreground_labels=label_manager.foreground_labels,
-    regions=label_manager.foreground_regions if
-    label_manager.has_regions else None,
-    ignore_label=label_manager.ignore_label)
+    val_transforms = get_validation_transforms(
+        deep_supervision_scales,
+        is_cascaded=False,
+        foreground_labels=label_manager.foreground_labels,
+        regions=label_manager.foreground_regions if
+        label_manager.has_regions else None,
+        ignore_label=label_manager.ignore_label)
 
-allowed_num_processes = get_allowed_n_proc_DA()
+    allowed_num_processes = get_allowed_n_proc_DA()
 
-mt_gen_train = LimitedLenWrapper(iters_train, data_loader=dl_tr, transform=tr_transforms,
-                                 num_processes=allowed_num_processes, num_cached=6, seeds=None,
-                                 pin_memory= True, wait_time=0.02)
+    mt_gen_train = LimitedLenWrapper(iters_train, data_loader=dl_tr, transform=tr_transforms,
+                                    num_processes=allowed_num_processes, num_cached=6, seeds=None,
+                                    pin_memory= True, wait_time=0.02)
 
-mt_gen_val = LimitedLenWrapper(iters_val, data_loader=dl_val,
-                               transform=val_transforms, num_processes=max(1, allowed_num_processes // 2),
-                               num_cached=3, seeds=None, pin_memory=True,
-                               wait_time=0.02)
+    mt_gen_val = LimitedLenWrapper(iters_val, data_loader=dl_val,
+                                transform=val_transforms, num_processes=max(1, allowed_num_processes // 2),
+                                num_cached=3, seeds=None, pin_memory=True,
+                                wait_time=0.02)
 
-# # build optimizer and lr_scheduler
-param_groups = get_param_groups(model_without_ddp, nowd_keys={'cls_token', 'pos_embed', 'mask_token', 'gamma'})
-opt_clz = {
-    'sgd': partial(torch.optim.SGD, momentum=0.9, nesterov=True),
-    'adamw': partial(torch.optim.AdamW, betas=(0.9, ada)),
-    #     'lamb': partial(lamb.TheSameAsTimmLAMB, betas=(0.9, ada), max_grad_norm=5.0),
-}[opt]
+    # # build optimizer and lr_scheduler
+    param_groups = get_param_groups(model_without_ddp, nowd_keys={'cls_token', 'pos_embed', 'mask_token', 'gamma'})
+    opt_clz = {
+        'sgd': partial(torch.optim.SGD, momentum=0.9, nesterov=True),
+        'adamw': partial(torch.optim.AdamW, betas=(0.9, ada)),
+        #     'lamb': partial(lamb.TheSameAsTimmLAMB, betas=(0.9, ada), max_grad_norm=5.0),
+    }[opt]
 
-optimizer = opt_clz(params=param_groups, lr=lr, weight_decay=weight_decay)
-scheduler = LinearWarmupCosineAnnealingLR(optimizer, warmup, epoch, 1e-6)
+    optimizer = opt_clz(params=param_groups, lr=lr, weight_decay=weight_decay)
+    # scheduler = LinearWarmupCosineAnnealingLR(optimizer, warmup, epoch, 1e-6)
+    scheduler = lr_scheduler.CosineAnnealingLR(optimizer, T_max=epoch, eta_min=0, last_epoch=-1, verbose='deprecated')
 
-it = 0
-epoch_loss = []
-epoch_ema_loss = []
-val_loss = []
-optimizer.zero_grad()
+    it = 0
+    epoch_loss = []
+    epoch_ema_loss = []
+    val_loss = []
+    optimizer.zero_grad()
 
-scaler = GradScaler()
-best_val_loss = 1e4
-val_every = 1
-logger = nnUNetLogger()
+    scaler = GradScaler()
+    best_val_loss = 1e4
+    val_every = 1
+    logger = nnUNetLogger()
 
-ema_loss_vector = None
-ema_loss_vector_val = None
+    ema_loss_vector = None
+    ema_loss_vector_val = None
 
-for i in range(epoch):
-    model.train()
-    per_loss = 0.0
-    per_p_loss, per_t_loss = 0.0, 0.0
-    print_to_log_file('')
-    print_to_log_file(f'Epoch {i}')
-    print_to_log_file()
+    for i in range(epoch):
+        model.train()
+        per_loss = 0.0
+        per_p_loss, per_t_loss = 0.0, 0.0
+        print_to_log_file('')
+        print_to_log_file(f'Epoch {i}')
+        print_to_log_file()
 
-    print_to_log_file(
-        f"Current learning rate: {np.round(optimizer.param_groups[0]['lr'], decimals=5)}")
-    logger.log('epoch_start_timestamps', time.time(), i)
-    # add this
-    if i < epoch//4:
-        model_ema.decay = 0.999 + i / (epoch//4) * (0.9999 - 0.999)
-    else:
-        model_ema.decay = 0.9999
+        print_to_log_file(
+            f"Current learning rate: {np.round(optimizer.param_groups[0]['lr'], decimals=5)}")
+        logger.log('epoch_start_timestamps', time.time(), i)
+        # add this
+        if i < epoch//4:
+            model_ema.decay = 0.999 + i / (epoch//4) * (0.9999 - 0.999)
+        else:
+            model_ema.decay = 0.9999
 
-    for idx in range(iters_train):
+        for idx in range(iters_train):
 
-        inp = next(mt_gen_train)
-        inp = inp['data']
-        inp = inp.to(device, non_blocking=True)
+            inp = next(mt_gen_train)
+            inp = inp['data']
+            inp = inp.to(device, non_blocking=True)
 
-        # intial mask to the model
-        mask1 = model.module.mask(batch_size, device)
+            # intial mask to the model
+            mask1 = model.module.mask(batch_size, device)
 
-        if model_ema is not None:
-            with torch.no_grad():
-                inp1, rec1 = model_ema.ema(inp, active_b1ff=mask1)
-                l2_loss = ((rec1 - inp1) ** 2).mean(dim=2, keepdim=False)
-                non_active = mask1.logical_not().int().view(mask1.shape[0], -1)  # (B, 1, f, f) => (B, L)
-                recon_loss = l2_loss * non_active
+            if model_ema is not None:
+                with torch.no_grad():
+                    inp1, rec1 = model_ema.ema(inp, active_b1ff=mask1)
+                    l2_loss = ((rec1 - inp1) ** 2).mean(dim=2, keepdim=False)
+                    non_active = mask1.logical_not().int().view(mask1.shape[0], -1)  # (B, 1, f, f) => (B, L)
+                    recon_loss = l2_loss * non_active
 
-        mask, _ = model_ema.ema.generate_mask(recon_loss, guide=guide, epoch=i, total_epoch=epoch - 1)
+            mask, _ = model_ema.ema.generate_mask(recon_loss, guide=guide, epoch=i, total_epoch=epoch - 1)
 
-        mask = mask.to(device, non_blocking=True)
-        inpp, recc = model(inp, active_b1ff=mask, vis=False)
-        avg_loss, _ = model.module.forward_loss(inpp, recc, mask)
-        loss = avg_loss
+            mask = mask.to(device, non_blocking=True)
+            inpp, recc = model(inp, active_b1ff=mask, vis=False)
+            avg_loss, _ = model.module.forward_loss(inpp, recc, mask)
+            loss = avg_loss
+            
+            optimizer.zero_grad()
+            loss.backward()
+            # optimize
+            torch.nn.utils.clip_grad_norm_(model.parameters(), clip).item()
+            optimizer.step()
 
-        optimizer.zero_grad()
-        loss.backward()
-        # optimize
-        torch.nn.utils.clip_grad_norm_(model.parameters(), clip).item()
-        optimizer.step()
+            model_ema.update(model)
+            loss = loss.item()
 
-        model_ema.update(model)
-        loss = loss.item()
+            if not math.isfinite(loss):
+                print(loss)
+                print(f'[rk{dist.get_rank():02d}] Loss is {loss}, stopping training!', flush=True)
+                sys.exit(-1)
+            per_loss += loss
+            torch.cuda.synchronize()
+            it += 1
+            print("### iter loss:", loss)
 
-        if not math.isfinite(loss):
-            print(loss)
-            print(f'[rk{dist.get_rank():02d}] Loss is {loss}, stopping training!', flush=True)
-            sys.exit(-1)
-        per_loss += loss
-        torch.cuda.synchronize()
-        it += 1
+        scheduler.step()
+        logger.log('epoch_end_timestamps', time.time(), i)
+        epoch_loss.append(per_loss / iters_train)
 
-    scheduler.step()
-    logger.log('epoch_end_timestamps', time.time(), i)
-    epoch_loss.append(per_loss / iters_train)
+        print('Epoch ', i, ' Train AVG Loss: ', per_loss / iters_train)
 
-    print('Epoch ', i, ' Train AVG Loss: ', per_loss / iters_train)
+        logger.log('train_losses', per_loss / iters_train, i)
+        print_to_log_file('train_loss', np.round(logger.my_fantastic_logging['train_losses'][-1], decimals=4))
+        print_to_log_file(
+            f"Epoch time: {np.round(logger.my_fantastic_logging['epoch_end_timestamps'][-1] - logger.my_fantastic_logging['epoch_start_timestamps'][-1], decimals=2)} s")
 
-    logger.log('train_losses', per_loss / iters_train, i)
-    print_to_log_file('train_loss', np.round(logger.my_fantastic_logging['train_losses'][-1], decimals=4))
-    print_to_log_file(
-        f"Epoch time: {np.round(logger.my_fantastic_logging['epoch_end_timestamps'][-1] - logger.my_fantastic_logging['epoch_start_timestamps'][-1], decimals=2)} s")
-
-    checkpoint = {
-        'network_weights': model.state_dict(),
-        'optimizer_state': optimizer.state_dict(),
-        'grad_scaler_state': None,
-        'train_loss': epoch_loss,
-        'val_loss': val_loss,
-        'current_epoch': i
-    }
-    torch.save(checkpoint, join(output_folder, model_name + '_head_latest.pt'))
+        checkpoint = {
+            'network_weights': model.state_dict(),
+            'optimizer_state': optimizer.state_dict(),
+            'grad_scaler_state': None,
+            'train_loss': epoch_loss,
+            'val_loss': val_loss,
+            'current_epoch': i
+        }
+        torch.save(checkpoint, join(output_folder, model_name + '_head_latest.pt'))
 

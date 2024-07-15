@@ -663,7 +663,7 @@ class SMiMTwoDecoder(nn.Module):
                 nn.init.constant_(m.weight, 1.0)
 
 if __name__ == '__main__':
-    device = torch.device(type='cuda', index=3)
+    device = torch.device(type='cuda', index=0)
 
     a1 = torch.cuda.memory_allocated(device=device)
     t1 = time.time()

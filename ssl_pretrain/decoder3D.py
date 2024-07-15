@@ -6,7 +6,23 @@ import torch.nn as nn
 from timm.models.layers import trunc_normal_, DropPath, to_3tuple
 from torch.utils.checkpoint import checkpoint
 import torch.nn.functional as F
+class UNetBlock(nn.Module):
+    def __init__(self, cin, cout, bn3d):
+        """
+        a UNet block with 2x up sampling
+        """
+        super().__init__()
+        self.up_sample = nn.ConvTranspose3d(cin, cin, kernel_size=4, stride=2, padding=1, bias=True)
+        self.conv = nn.Sequential(
+            nn.Conv3d(cin, cin, kernel_size=3, stride=1, padding=1, bias=False), bn3d(cin), nn.ReLU6(inplace=True),
+            nn.Conv3d(cin, cout, kernel_size=3, stride=1, padding=1, bias=False), bn3d(cout),
+        )
+    def forward(self, x):
+        x = self.up_sample(x)
 
+        for idx, layer in enumerate(self.conv):
+            x = layer(x)
+        return x
 def is_pow2n(x):
     return x > 0 and (x & (x - 1) == 0)
 

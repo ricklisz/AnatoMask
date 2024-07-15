@@ -449,7 +449,7 @@ def on_validation_epoch_end(val_outputs, current_epoch, logger, is_ddp = False):
     logger.log('val_losses', loss_here,current_epoch)
 
 
-device = torch.device("cuda:3")
+device = torch.device("cuda:0")
 
 dataset_json = load_json('/home/yl_li/STUNet/nnUNet-1.7.1/nnUNet_preprocessed/Dataset501_Total/dataset.json')
 plans = load_json('/home/yl_li/STUNet/nnUNet-1.7.1/nnUNet_preprocessed/Dataset501_Total/nnUNetPlans.json')

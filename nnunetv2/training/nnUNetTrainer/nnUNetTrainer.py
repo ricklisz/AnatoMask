@@ -97,7 +97,7 @@ class nnUNetTrainer(object):
             if self.device.type == 'cuda':
                 # we might want to let the user pick this but for now please pick the correct GPU with CUDA_VISIBLE_DEVICES=X
                 # self.device = torch.device(type='cuda', index=1)
-                self.device = torch.device(type='cuda', index=3)
+                self.device = torch.device(type='cuda', index=0)
             print(f"Using device: {self.device}")
 
         # loading and saving this class for continuing from checkpoint should not happen based on pickling. This

@@ -19,7 +19,7 @@ class MedNeXtV2Trainer(nnUNetTrainer):
         super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
         self.num_epochs = 0
         self.initial_lr = 1e-4
-        self.device = torch.device(type='cuda', index=3)
+        self.device = torch.device(type='cuda', index=0)
 
     @staticmethod
     def build_network_architecture(plans_manager,

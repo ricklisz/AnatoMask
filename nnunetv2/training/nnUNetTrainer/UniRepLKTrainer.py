@@ -897,7 +897,7 @@ class LayerNorm(nn.Module):
 
 if __name__ == '__main__':
     strides = [[2,2,2],[2,2,2],[2,2,2],[2,2,2],[1,1,1]]
-    device = torch.device(type='cuda', index=3)
+    device = torch.device(type='cuda', index=0)
     m1 = torch.Tensor(size = (1, 1, 112, 112, 128)).to(device)
     model = UniRepLKUNet(1,105, depth=[2] * 6, dims=[64 * x for x in [1, 2, 4, 8, 16, 16]],
                                 LK_kernels=[[3,3],[3,3],

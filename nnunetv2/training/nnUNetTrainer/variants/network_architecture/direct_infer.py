@@ -12,7 +12,7 @@ if __name__ == '__main__':
         use_gaussian=True,
         use_mirroring=True,
         perform_everything_on_gpu=True,
-        device=torch.device('cuda', 3),
+        device=torch.device('cuda', 0),
         verbose=False,
         verbose_preprocessing=False,
         allow_tqdm=True

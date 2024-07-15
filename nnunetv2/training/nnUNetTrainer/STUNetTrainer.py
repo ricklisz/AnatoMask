@@ -20,7 +20,7 @@ class STUNetTrainer(nnUNetTrainer):
         self.num_epochs = 0
         self.initial_lr = 1e-4
         self.momentum = 0.9599
-        self.device = torch.device(type='cuda', index=3)
+        self.device = torch.device(type='cuda', index=0)
         # self.device = torch.device('cuda')
         self.weight_decay = 1e-5
 
