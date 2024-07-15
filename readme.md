@@ -30,15 +30,6 @@ An example is given in here: [https://github.com/ricklisz/AnatoMask/blob/win_ver
 
 Import your function and replace nnUNet's `load_pretrained_weights` here: [https://github.com/ricklisz/AnatoMask/blob/win_ver/nnunetv2/run/run_training.py](https://github.com/ricklisz/AnatoMask/blob/win_ver/nnunetv2/run/run_training.py)
 
-For example:
-`else:
-    if pretrained_weights_file is not None:
-        if not nnunet_trainer.was_initialized:
-            nnunet_trainer.initialize()
-        # load_pretrained_weights(nnunet_trainer.network, pretrained_weights_file, verbose=True)
-        <Load your pretrained weights>
-    expected_checkpoint_file = None`
-
 Finally, run your nnUNet training command as usual, but adding `-pretrained_weights PATH_TO_YOUR_WEIGHTS`
 Example:
 
