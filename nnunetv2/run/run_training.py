@@ -8,7 +8,7 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from batchgenerators.utilities.file_and_folder_operations import join, isfile, load_json
 from nnunetv2.paths import nnUNet_preprocessed
-from nnunetv2.run.load_pretrained_weights import load_pretrained_weights
+from nnunetv2.run.load_pretrained_weights import load_pretrained_weights, load_stunet_ssl_weights
 from nnunetv2.training.nnUNetTrainer.nnUNetTrainer import nnUNetTrainer
 from nnunetv2.utilities.dataset_name_id_conversion import maybe_convert_to_dataset_name
 from nnunetv2.utilities.find_class_by_name import recursive_find_python_class
@@ -92,6 +92,7 @@ def maybe_load_checkpoint(nnunet_trainer: nnUNetTrainer, continue_training: bool
             if not nnunet_trainer.was_initialized:
                 nnunet_trainer.initialize()
             load_pretrained_weights(nnunet_trainer.network, pretrained_weights_file, verbose=True)
+            # load_stunet_pretrained_weights(nnunet_trainer.network, pretrained_weights_file, verbose=True)
         expected_checkpoint_file = None
 
     if expected_checkpoint_file is not None:

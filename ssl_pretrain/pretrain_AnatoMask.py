@@ -233,7 +233,6 @@ if __name__ == '__main__':
 
     model_name = 'STUNet_B'
 
-
     enc = SparseEncoder(head, input_size=(112, 112, 128), sbn=False).to(device)
     dec = LightDecoder(enc.downsample_ratio,sbn=False, width = 512, out_channel = 1).to(device)
     model_without_ddp = SparK(
