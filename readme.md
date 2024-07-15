@@ -5,7 +5,7 @@ Please clone our repo and install nnUNet from our source.
 
 # What is AnatoMask?
 Our approach is fairly straightforward. We want to offer the option to conduct self-supervised pretraining leveraging nnUNet's **whole pipeline**. Currently, we offer the option to use 1). **SparK**, which is equivalent to masked autoencoders in transformers and 2). **AnatoMask**, which bootstraps difficult regions for MAE objective. After pretraining on your own dataset, we can initialize these weights for downstream segmentation tasks. 
-![Comparison with vanilla MAE](documentation/assets/AnatoMask1.png)
+![Comparison with vanilla MAE](figs/AnatoMask1.png)
 
 Currently, our backbones are all CNNs! This ensures optimal performance for segmentation :)
 
@@ -36,7 +36,7 @@ Example:
 # What exactly does AnatoMask do?
 We propose a reconstruction-guided masking strategy, so that the model learns the anatomically significant regions through reconstruction losses. This is done by using self-distillation. Basically, a teacher network first identifies important regions to mask and generates a more difficult mask for the student to solve.  
 To prevent the network from converging to a suboptimal solution early during training, we use an easy-to-hard a masking dynamics function controlling the difficulty of the MIM objective.
-![Overview](documentation/assets/Workflow.png)
+![Overview](figs/Workflow.png)
 
 
 # TO DO
