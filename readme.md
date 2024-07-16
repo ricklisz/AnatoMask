@@ -55,12 +55,7 @@ Our workflow currently supports STUNetTrainer -> [HERE](https://github.com/rickl
 We propose a reconstruction-guided masking strategy, so that the model learns the anatomically significant regions through reconstruction losses. This is done by using self-distillation. Basically, a teacher network first identifies important regions to mask and generates a more difficult mask for the student to solve.  
 To prevent the network from converging to a suboptimal solution early during training, we use an easy-to-hard a masking dynamics function controlling the difficulty of the MIM objective.
 ![Overview](figs/workflow.png)
-
-
-# TO DO
-* Release the windows version.
-* Release the linux version. DDP support.
-* Release pretrained weights and finetuned weights. 
+ 
 
 # Reference
 Please cite [here](https://scholar.google.com/citations?view_op=view_citation&hl=en&user=MxO6qiIAAAAJ&sortby=pubdate&citation_for_view=MxO6qiIAAAAJ:LkGwnXOMwfcC) when using AnatoMask:
