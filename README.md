@@ -27,11 +27,11 @@ Check out this comparison:
 Currently, our backbones are all CNNs! This ensures optimal performance for segmentation :)
 
 # Pretraining using AnatoMask
-1. Prepare your segmentation model's encoder.  An example is given for STUNet_head.py. 
+Step 1: Prepare your segmentation model's encoder.  An example is given for STUNet_head.py. 
 
 For more info on building your own CNN encoder, refer to SparK's [guideline](https://github.com/keyu-tian/SparK/tree/main/pretrain) 
 
-2. Go to [ssl_pretrain](https://github.com/ricklisz/AnatoMask/blob/main/nnunetv2/training/nnUNetTrainer/variants/pretrain/pretrain_AntoMask.py)
+Step 2: Go to [ssl_pretrain](https://github.com/ricklisz/AnatoMask/blob/main/nnunetv2/training/nnUNetTrainer/variants/pretrain/pretrain_AntoMask.py)
 
 A few more things to do:
 * Set up your `output_folder = 'XXX'` This contains your saved model weights. 
