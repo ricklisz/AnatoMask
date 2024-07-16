@@ -29,9 +29,9 @@ Currently, our backbones are all CNNs! This ensures optimal performance for segm
 # Pretraining using AnatoMask
 1. Prepare your segmentation model's encoder.  An example is given for STUNet_head.py. 
 
-For more info, refer to SparK's [guideline](https://github.com/keyu-tian/SparK/tree/main/pretrain) 
+For more info on building your own CNN encoder, refer to SparK's [guideline](https://github.com/keyu-tian/SparK/tree/main/pretrain) 
 
-2. Go to [ssl_pretrain](https://github.com/ricklisz/AnatoMask/blob/win_ver/ssl_pretrain/pretrain_AnatoMask.py)
+2. Go to [ssl_pretrain](https://github.com/ricklisz/AnatoMask/blob/main/nnunetv2/training/nnUNetTrainer/variants/pretrain/pretrain_AntoMask.py)
 
 A few more things to do:
 * Set up your `output_folder = 'XXX'` This contains your saved model weights. 
@@ -44,11 +44,15 @@ A few more things to do:
 Note: You can use SparK by following the same steps and run `pretrain.py` 
 
 # Finetuning
-Define your function to load pretrained weights here (an example is given): [https://github.com/ricklisz/AnatoMask/blob/win_ver/nnunetv2/run/load_pretrained_weights.py](https://github.com/ricklisz/AnatoMask/blob/win_ver/nnunetv2/run/load_pretrained_weights.py)
+Define your function to load pretrained weights here (an example is given) [EXAMPLE](https://github.com/ricklisz/AnatoMask/blob/main/nnunetv2/run/load_pretrained_weights.py)
 
-Import your function and replace nnUNet's `load_pretrained_weights` here: [https://github.com/ricklisz/AnatoMask/blob/win_ver/nnunetv2/run/run_training.py](https://github.com/ricklisz/AnatoMask/blob/win_ver/nnunetv2/run/run_training.py)
+Import your function and replace nnUNet's `load_pretrained_weights` [HERE](https://github.com/ricklisz/AnatoMask/blob/main/nnunetv2/run/run_training.py)
 
 Finally, run your nnUNet training command as usual, but adding `-pretrained_weights PATH_TO_YOUR_WEIGHTS`
+
+Our workflow currently supports STUNetTrainer -> [HERE](https://github.com/ricklisz/AnatoMask/blob/main/nnunetv2/training/nnUNetTrainer/STUNetTrainer.py)
+
+If you want to use your own model, write your own trainer class following STUNetTrainer's example. 
 
 # What exactly does AnatoMask do?
 We propose a reconstruction-guided masking strategy, so that the model learns the anatomically significant regions through reconstruction losses. This is done by using self-distillation. Basically, a teacher network first identifies important regions to mask and generates a more difficult mask for the student to solve.  
