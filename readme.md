@@ -12,13 +12,23 @@ torch==2.0.1
 simpleitk==2.3.1
 `
 # What is AnatoMask?
-Our approach is fairly straightforward. We want to offer the option to conduct self-supervised pretraining leveraging nnUNet's **whole pipeline**. Currently, we offer the option to use 1). **SparK**, which is equivalent to masked autoencoders in transformers and 2). **AnatoMask**, which bootstraps difficult regions for MAE objective. After pretraining on your own dataset, we can initialize these weights for downstream segmentation tasks. 
+Our hypothesis is pretty simple: _masked image modeling_ + _ConvNet backbone_ = _success_ for medical image segmentation. 
+
+Given nnUNet's state-of-the-art performance, we want to offer the option to conduct self-supervised pretraining leveraging nnUNet's **whole pipeline**.
+
+Currently, we offer the option to use 1). **SparK**, which is the CNN equivalent of masked autoencoders and 2). **AnatoMask**, which refines SparK by bootstrapping difficult regions to form more difficult pretraining masks. After pretraining on some dataset, we can transfer these weights for downstream segmentation tasks. 
+
+Check out this comparison: 
 ![Comparison with vanilla MAE](figs/Anatomask1.png)
 
 Currently, our backbones are all CNNs! This ensures optimal performance for segmentation :)
 
 # Pretraining using AnatoMask
-Go to [ssl_pretrain](https://github.com/ricklisz/AnatoMask/blob/win_ver/ssl_pretrain/pretrain_AnatoMask.py)
+Step 1: Prepare your segmentation model's encoder.  An example is given for STUNet_head.py. 
+
+For more info on building your own CNN encoder, refer to SparK's [guideline](https://github.com/keyu-tian/SparK/tree/main/pretrain) 
+
+Step 2: Go to [ssl_pretrain](https://github.com/ricklisz/AnatoMask/blob/win_ver/ssl_pretrain/pretrain_AnatoMask.py)
 
 A few things to do:
 1. Set up your `output_folder = 'XXX'` This contains your saved model weights.
@@ -38,7 +48,8 @@ An example is given in here: [https://github.com/ricklisz/AnatoMask/blob/win_ver
 Import your function and replace nnUNet's `load_pretrained_weights` here: [https://github.com/ricklisz/AnatoMask/blob/win_ver/nnunetv2/run/run_training.py](https://github.com/ricklisz/AnatoMask/blob/win_ver/nnunetv2/run/run_training.py)
 
 Finally, run your nnUNet training command as usual, but adding `-pretrained_weights PATH_TO_YOUR_WEIGHTS`
-Example:
+
+Our workflow currently supports STUNetTrainer -> [HERE](https://github.com/ricklisz/AnatoMask/blob/win_ver/nnunetv2/training/nnUNetTrainer/STUNetTrainer.py)
 
 # What exactly does AnatoMask do?
 We propose a reconstruction-guided masking strategy, so that the model learns the anatomically significant regions through reconstruction losses. This is done by using self-distillation. Basically, a teacher network first identifies important regions to mask and generates a more difficult mask for the student to solve.  
