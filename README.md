@@ -63,8 +63,6 @@ To prevent the network from converging to a suboptimal solution early during tra
 TBC
 
 # TO DO
-* Release the windows version.
-* Release the linux version. DDP support.
 * Release pretrained weights and finetuned weights. 
 
 # Reference
