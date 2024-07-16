@@ -1,4 +1,7 @@
-# Windows-version for AnatoMask
+# AnatoMask: Enhancing Medical Image Segmentation with Reconstruction-guided Self-masking
+[arxiv](https://arxiv.org/abs/2407.06468)
+
+# Linux-version for AnatoMask
 Please clone our repo and install nnUNetv2 from our source.
 
 `pip install -e .`
@@ -45,6 +48,8 @@ We propose a reconstruction-guided masking strategy, so that the model learns th
 To prevent the network from converging to a suboptimal solution early during training, we use an easy-to-hard a masking dynamics function controlling the difficulty of the MIM objective.
 ![Overview](figs/workflow.png)
 
+#  Model Zoo
+TBC
 
 # TO DO
 * Release the windows version.
