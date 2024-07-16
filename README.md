@@ -27,15 +27,19 @@ Check out this comparison:
 Currently, our backbones are all CNNs! This ensures optimal performance for segmentation :)
 
 # Pretraining using AnatoMask
-Go to [ssl_pretrain](https://github.com/ricklisz/AnatoMask/blob/win_ver/ssl_pretrain/pretrain_AnatoMask.py)
+1. Prepare your segmentation model's encoder.  An example is given for STUNet_head.py. 
 
-A few things to do:
-1. Set up your `output_folder = 'XXX'` This contains your saved model weights.
-2. Set up your `preprocessed_dataset_folder = 'XXX/nnUNet_preprocessed/Dataset009_Spleen/nnUNetPlans_3d_fullres'` This is your preprocessed nnUNet dataset. Please be sure to preprocess your dataset first following nnUNet's tutorial!
-3. Find your nnUNet splits file (or create your own split if you are so inclined). `splits_file = 'XXX/nnUNet_preprocessed/Dataset009_Spleen/splits_final.json'` You can get this by running nnUNet once on your dataset.
-4. Find your dataset json file: `dataset_json = load_json('XXX/Dataset009_Spleen/dataset.json')`
-5. Find your plan json file: `plans = load_json('XXX/nnUNet_preprocessed/Dataset009_Spleen/nnUNetPlans.json')`
-6. Run: `python pretrain_AnatoMask.py`
+For more info, refer to SparK's [guideline](https://github.com/keyu-tian/SparK/tree/main/pretrain) 
+
+2. Go to [ssl_pretrain](https://github.com/ricklisz/AnatoMask/blob/win_ver/ssl_pretrain/pretrain_AnatoMask.py)
+
+A few more things to do:
+* Set up your `output_folder = 'XXX'` This contains your saved model weights. 
+* Set up your `preprocessed_dataset_folder = 'XXX/nnUNet_preprocessed/Dataset009_Spleen/nnUNetPlans_3d_fullres'` This is your preprocessed nnUNet dataset. Please be sure to preprocess your dataset first following nnUNet's tutorial!
+* Find your nnUNet splits file (or create your own split if you are so inclined). `splits_file = 'XXX/nnUNet_preprocessed/Dataset009_Spleen/splits_final.json'` You can get this by running nnUNet once on your dataset. 
+* Find your dataset json file: `dataset_json = load_json('XXX/Dataset009_Spleen/dataset.json')`
+* Find your plan json file: `plans = load_json('XXX/nnUNet_preprocessed/Dataset009_Spleen/nnUNetPlans.json')`
+* Run: `python pretrain_AnatoMask.py`
 
 Note: You can use SparK by following the same steps and run `pretrain.py` 
 
