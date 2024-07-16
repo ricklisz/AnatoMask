@@ -19,7 +19,7 @@ Our hypothesis is pretty simple: _masked image modeling_ + _ConvNet backbone_ = 
 
 Given nnUNet's state-of-the-art performance, we want to offer the option to conduct self-supervised pretraining leveraging nnUNet's **whole pipeline**.
 
-Currently, we offer the option to use 1). **SparK**, which is the CNN equivalent of masked autoencoders and 2). **AnatoMask**, which refines SparK by bootstrapping difficult regions to form more difficult pretraining masks. After pretraining on some dataset, we can transfer these weights for downstream segmentation tasks. 
+Currently, we offer the option to use 1). [SparK](https://github.com/keyu-tian/SparK), which is the CNN equivalent of masked autoencoders and 2). **AnatoMask**, which refines SparK by bootstrapping difficult regions to form more difficult pretraining masks. After pretraining on some dataset, we can transfer these weights for downstream segmentation tasks. 
 
 Check out this comparison:
 ![Comparison with random masking](figs/Anatomask1.png)
