@@ -3,7 +3,7 @@ name = "nnunetv2"
 version = "2.2"
 requires-python = ">=3.9"
 description = "nnU-Net is a framework for out-of-the box image segmentation."
-readme = "readme.md"
+readme = "README.md"
 license = { file = "LICENSE" }
 authors = [
     { name = "Fabian Isensee", email = "f.isensee@dkfz-heidelberg.de"},
